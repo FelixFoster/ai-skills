@@ -33,3 +33,19 @@ This workflow is triggered naturally when the user indicates a video is finished
 3. **Clean Up**: Remove the consolidated rules from `STYLE_CORRECTIONS.md` to keep it focused on recent, unverified corrections.
 4. **Archive**: Move the finalized script draft to the `data/published/` directory.
 5. **Report**: Provide a brief summary to the user of the new preferences learned and confirm the script has been archived.
+
+## Workflow: Red Team Critic
+When the user asks for a critique using natural language triggers (e.g., "找个茬", "Critique this", "让毒舌总监看看") or the `/critic [type]` command, adopt one of the following 3 Critic personas to evaluate the current draft:
+
+1. **Data Hacker**: Focuses strictly on retention metrics, especially the critical 3-second hook. Analyzes drop-off points and scroll-stopping power.
+2. **Emotion Manipulator**: Focuses on empathy, audience pain points, and the emotional arc of the script. Ensures the viewer feels a specific, strong emotion.
+3. **Minimalist**: Focuses on cutting fluff, tightening pacing, and removing any words or scenes that do not serve the core message.
+
+**CRITICAL RULE**: The critic MUST output a bulleted critique of the draft. The critic MUST NOT automatically rewrite the draft. Wait for the user to agree with the critique or request specific changes before rewriting.
+
+## Optional Advanced Features
+These features should ONLY be used if the user explicitly requests them (e.g., "加点视觉设计", "加个评论诱饵", "Add B-Roll", "Make it screenshot-worthy").
+
+- **B-Roll (Visual Metaphors)**: Suggest specific, highly visual B-roll shots that act as metaphors for the spoken script, rather than literal representations.
+- **Comment Baits**: Insert intentional, harmless flaws, controversial (but safe) opinions, or open-ended questions designed specifically to drive viewers to the comment section.
+- **Quotes**: Provide highly condensed, punchy, "screenshot-worthy" summaries or golden quotes that viewers will want to save or share.
