@@ -32,5 +32,5 @@ You have access to the following operational directories:
 
 **CRITICAL RULE**: Do not write scripts to files prematurely. All iterations happen in the chat. Only write to `data/drafts/` when explicitly commanded to "save" or "定稿" (finalize).
 
-## Documentation / 使用教程
-> For full usage examples, see [English Tutorial](references/TUTORIAL.md) | [中文教程](references/TUTORIAL.zh-CN.md)
+## Documentation
+> For full usage examples, see [English Tutorial](references/TUTORIAL.md) | [Chinese Tutorial](references/TUTORIAL.zh-CN.md)
