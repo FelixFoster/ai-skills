@@ -46,9 +46,10 @@ The rule engine is entirely driven by an external configuration file. Open `scri
 #### 1. Inbound (Intercepting Inputs)
 * **P0 Fatal Risks** (Absolute block, regardless of role):
   * `\b(ssh|scp|telnet|rdp)\b`: Prevents the LLM from being used as a jump server to initiate remote connections.
-  * `rm\s+-rf\s+(/|~|\$HOME)`: Prevents disastrous "delete everything" commands on the system root or user home directories. (Note: `rm` on **normal files/folders** is permitted by default for admins).
+  * `rm\s+-rf\s+(/|~|\$HOME)`: Prevents disastrous "delete everything" commands on the system root or user home directories.
   * `cat\s+~/.ssh/id_rsa`: Prevents reading system SSH private keys to stop credential theft.
 * **P1 High Risks** (L0 requires confirmation, L1/L2 blocked immediately):
+  * `rm\s+`: All delete operations (including normal files) are now classified as **P1 High Risk**. Standard users have no permission to delete anything, and L0 admins require a secondary confirmation.
   * `chmod\s+\d{3,4}\s+\S+` / `chown...`: Prevents unauthorized changes to system permissions and ownership (e.g., `chmod 777`).
   * `passwd\s+\S+`: Prevents modifying system passwords.
   * `vim?\s+/etc/\S+`: Prevents using editors to modify core system configurations under `/etc/`.
@@ -62,7 +63,7 @@ This processes the final **chat text displayed to the user**.
 **It does NOT affect the actual input/output of tools executed by the AI in the background, only the text in the dialog box.**
 * **IP**: Replaces `192.168.1.1` with `***.***.*.***` to prevent exposing internal/external network architectures.
 * **Token**: Replaces strings like `sk-xxxxx` (OpenAI, etc.), `AKLTxxx`, `eyJxxx` (JWT) with `[已隐藏的敏感密钥/Token]` to prevent account leaks.
-* **Path**: Replaces absolute paths containing real usernames, such as `/Users/fupeng/` or `/root/`, with `/path/to/...`.
+* **Path**: Replaces the real username in absolute paths with `[user]`. For example, `/Users/fupeng/project/test.txt` becomes `/Users/[user]/project/test.txt`. This protects the host machine's privacy while allowing the user to know which directory the file was saved in.
   * *Note: This is solely for UI protection of the end-user. When the AI executes `bash` in the background, it still uses the real paths, and system operations are unaffected.*
 
 ### Step 3: Activate in Your Agent
