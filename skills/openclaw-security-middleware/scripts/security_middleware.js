@@ -170,6 +170,52 @@ async function main() {
                     console.log(JSON.stringify(result));
                     return;
                 }
+                // Confirm and Rate Limit Logic
+                for (const rule of matchedRules) {
+                    if (rule.require_confirm) {
+                        if (!request.content.includes('CONFIRMED_P1')) {
+                            const result = {
+                                action: 'block',
+                                reason: 'High Risk Detected. Confirmation required. Please append "CONFIRMED_P1" to your request to proceed.',
+                                request_id: request.request_id || 'unknown'
+                            };
+                            await logAudit(request, result);
+                            console.log(JSON.stringify(result));
+                            return;
+                        }
+                    }
+                    if (rule.rate_limit) {
+                        const lockPath = path.join(__dirname, `../logs/rate_limit_${rule.policyName}.lock`);
+                        const dataPath = path.join(__dirname, `../logs/rate_limit_${rule.policyName}.json`);
+                        let isRateLimited = false;
+                        await withFileLock(lockPath, async () => {
+                            let timestamps = [];
+                            if (fs.existsSync(dataPath)) {
+                                try {
+                                    timestamps = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+                                } catch (e) {}
+                            }
+                            const now = Date.now();
+                            timestamps = timestamps.filter(t => now - t < 60000);
+                            timestamps.push(now);
+                            if (timestamps.length > rule.rate_limit) {
+                                isRateLimited = true;
+                            } else {
+                                fs.writeFileSync(dataPath, JSON.stringify(timestamps), 'utf8');
+                            }
+                        });
+                        if (isRateLimited) {
+                            const result = {
+                                action: 'block',
+                                reason: `Rate Limit Exceeded for policy: ${rule.policyName}`,
+                                request_id: request.request_id || 'unknown'
+                            };
+                            await logAudit(request, result);
+                            console.log(JSON.stringify(result));
+                            return;
+                        }
+                    }
+                }
             }
         }
         else if (request.direction === 'outbound') {
