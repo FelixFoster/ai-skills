@@ -179,9 +179,33 @@ async function main() {
                 }
             }
         }
+        else if (request.direction === 'outbound') {
+            let sanitizedText = request.content || '';
+            if (rules.outbound_masking) {
+                for (const key of Object.keys(rules.outbound_masking)) {
+                    const regexString = rules.outbound_masking[key];
+                    const regex = new RegExp(regexString, 'g');
+                    let replacement = '';
+                    if (key === 'IP') {
+                        replacement = '***.***.*.***';
+                    } else if (key === 'Token') {
+                        replacement = '[已隐藏的敏感密钥/Token]';
+                    } else if (key === 'Path') {
+                        replacement = '/path/to/...';
+                    }
+                    sanitizedText = sanitizedText.replace(regex, replacement);
+                }
+            }
+            console.log(JSON.stringify({
+                action: 'pass',
+                sanitized_text: sanitizedText,
+                request_id: request.request_id || 'unknown'
+            }));
+            return;
+        }
         console.log(JSON.stringify({
             action: 'pass',
-            reason: 'Skeleton implementation - always pass',
+            reason: 'Inbound request passed security checks',
             request_id: request.request_id || 'unknown'
         }));
 
