@@ -1,14 +1,4 @@
 {
-  "roles": {
-    "L0": {
-      "description": "Super Admin - Full access with minimal restrictions",
-      "users": []
-    },
-    "L1": {
-      "description": "Standard User - Restricted access with security monitoring",
-      "users": []
-    }
-  },
   "users": [
     {
       "id": "admin_example",
