@@ -1,0 +1,30 @@
+# Ignore Node.js logs and modules (in case users add any accidentally)
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Ignore runtime generated audit and error logs for the security middleware
+skills/openclaw-security-middleware/logs/audit*.log
+skills/openclaw-security-middleware/logs/error.log
+skills/openclaw-security-middleware/logs/rate_limit_*.json
+skills/openclaw-security-middleware/logs/rate_limit_*.lock
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
