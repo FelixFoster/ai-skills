@@ -12,6 +12,9 @@ if (process.stdout.setDefaultEncoding) {
 const LOG_FILE = path.join(__dirname, '../logs/error.log');
 const RULES_FILE = path.join(__dirname, 'rules.json');
 const AUTH_LIST_FILE = path.join(__dirname, '../config/auth_list.json');
+const AUDIT_LOG_FILE = path.join(__dirname, '../logs/audit.log');
+const AUDIT_LOCK_FILE = path.join(__dirname, '../logs/audit.lock');
+const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB
 
 /**
  * Simple file-based lock for cross-platform concurrency control.
@@ -57,6 +60,32 @@ async function withFileLock(lockPath, callback, retries = 10) {
 }
 
 /**
+ * Logs an audit entry with file locking and rotation.
+ * @param {Object} request The original request object.
+ * @param {Object} result The result of the security check.
+ */
+async function logAudit(request, result) {
+    await withFileLock(AUDIT_LOCK_FILE, async () => {
+        if (fs.existsSync(AUDIT_LOG_FILE)) {
+            const stats = fs.statSync(AUDIT_LOG_FILE);
+            if (stats.size > MAX_LOG_SIZE) {
+                const backupPath = path.join(__dirname, '../logs/audit.1.log');
+                if (fs.existsSync(backupPath)) {
+                    fs.unlinkSync(backupPath);
+                }
+                fs.renameSync(AUDIT_LOG_FILE, backupPath);
+            }
+        }
+        const logEntry = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            request,
+            result
+        }) + '\n';
+        fs.appendFileSync(AUDIT_LOG_FILE, logEntry, 'utf8');
+    });
+}
+
+/**
  * Main processing logic.
  */
 async function main() {
@@ -97,48 +126,51 @@ async function main() {
             if (rules.inbound_rules && rules.inbound_rules.P0) {
                 for (const rule of rules.inbound_rules.P0) {
                     if (new RegExp(rule).test(request.content)) {
-                        console.log(JSON.stringify({
+                        const result = {
                             action: 'block',
                             reason: 'P0 Critical Risk Detected',
                             request_id: request.request_id || 'unknown'
-                        }));
+                        };
+                        await logAudit(request, result);
+                        console.log(JSON.stringify(result));
                         return;
                     }
                 }
             }
-
             // Check P1
             if (rules.inbound_rules && rules.inbound_rules.P1) {
                 for (const rule of rules.inbound_rules.P1) {
                     if (new RegExp(rule).test(request.content)) {
                         if (role === 'L0') {
                             if (!request.content.includes('CONFIRMED_P1')) {
-                                console.log(JSON.stringify({
+                                const result = {
                                     action: 'block',
                                     reason: 'P1 High Risk Detected. L0 confirmation required. Please append "CONFIRMED_P1" to your request to proceed.',
                                     request_id: request.request_id || 'unknown'
-                                }));
+                                };
+                                await logAudit(request, result);
+                                console.log(JSON.stringify(result));
                                 return;
                             }
                         } else {
-                            console.log(JSON.stringify({
+                            const result = {
                                 action: 'block',
                                 reason: 'P1 High Risk Detected. Permission denied.',
                                 request_id: request.request_id || 'unknown'
-                            }));
+                            };
+                            await logAudit(request, result);
+                            console.log(JSON.stringify(result));
                             return;
                         }
                     }
                 }
             }
-
             // Check P2
             if (rules.inbound_rules && rules.inbound_rules.P2) {
                 for (const rule of rules.inbound_rules.P2) {
                     if (new RegExp(rule).test(request.content)) {
                         const lockPath = path.join(__dirname, '../logs/rate_limit.lock');
                         const dataPath = path.join(__dirname, '../logs/rate_limit.json');
-                        
                         const isBlocked = await withFileLock(lockPath, async () => {
                             let data = {};
                             try {
@@ -148,31 +180,27 @@ async function main() {
                             } catch (e) {
                                 // Ignore read errors, start fresh
                             }
-
                             const now = Date.now();
                             const oneMinuteAgo = now - 60000;
-                            
                             // Clean up old timestamps
                             let timestamps = data.timestamps || [];
                             timestamps = timestamps.filter(ts => ts > oneMinuteAgo);
-                            
                             if (timestamps.length >= 10) {
                                 return true; // Blocked
                             }
-                            
                             timestamps.push(now);
                             data.timestamps = timestamps;
-                            
                             fs.writeFileSync(dataPath, JSON.stringify(data), 'utf8');
                             return false; // Not blocked
                         });
-
                         if (isBlocked) {
-                            console.log(JSON.stringify({
+                            const result = {
                                 action: 'block',
                                 reason: 'P2 Rate Limit Exceeded',
                                 request_id: request.request_id || 'unknown'
-                            }));
+                            };
+                            await logAudit(request, result);
+                            console.log(JSON.stringify(result));
                             return;
                         }
                     }
@@ -196,18 +224,22 @@ async function main() {
                     sanitizedText = sanitizedText.replace(regex, replacement);
                 }
             }
-            console.log(JSON.stringify({
+            const result = {
                 action: 'pass',
                 sanitized_text: sanitizedText,
                 request_id: request.request_id || 'unknown'
-            }));
+            };
+            await logAudit(request, result);
+            console.log(JSON.stringify(result));
             return;
         }
-        console.log(JSON.stringify({
+        const result = {
             action: 'pass',
             reason: 'Inbound request passed security checks',
             request_id: request.request_id || 'unknown'
-        }));
+        };
+        await logAudit(request, result);
+        console.log(JSON.stringify(result));
 
     } catch (err) {
 

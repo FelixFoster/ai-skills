@@ -1,0 +1,2 @@
+{"timestamp":"2026-03-13T04:23:09.149Z","request":{"direction":"inbound","content":"test2","request_id":"rot2"},"result":{"action":"pass","reason":"Inbound request passed security checks","request_id":"rot2"}}
+{"timestamp":"2026-03-13T04:23:50.554Z","request":{"direction":"inbound","sender_id":"test","content":"test"},"result":{"action":"pass","reason":"Inbound request passed security checks","request_id":"unknown"}}
