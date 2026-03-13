@@ -1,0 +1,26 @@
+{
+  "inbound_rules": {
+    "P0": [
+      "\\b(ssh|scp|telnet|rdp)\\b",
+      "rm\\s+-rf\\s+(/|~|\\$HOME)",
+      "cat\\s+~/.ssh/id_rsa"
+    ],
+    "P1": [
+      "chmod\\s+\\d{3,4}\\s+\\S+",
+      "chown\\s+\\S+\\s+\\S+",
+      "passwd\\s+\\S+",
+      "vim?\\s+/etc/\\S+",
+      "nano\\s+/etc/\\S+"
+    ],
+    "P2": [
+      "cat\\s+/etc/passwd",
+      "ls\\s+-la?\\s+/root",
+      "find\\s+/\\s+-name\\s+\".*\""
+    ]
+  },
+  "outbound_masking": {
+    "IP": "((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)",
+    "Token": "(sk-[a-zA-Z0-9]{32,}|AKLT[a-zA-Z0-9]+|eyJhbG[a-zA-Z0-9\\-_]+\\.[a-zA-Z0-9\\-_]+\\.[a-zA-Z0-9\\-_]+)",
+    "Path": "/root/\\S+|/Users/[^/]+/\\S+"
+  }
+}

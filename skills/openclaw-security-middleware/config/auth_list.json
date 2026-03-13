@@ -1,0 +1,24 @@
+{
+  "roles": {
+    "L0": {
+      "description": "Super Admin - Full access with minimal restrictions",
+      "users": []
+    },
+    "L1": {
+      "description": "Standard User - Restricted access with security monitoring",
+      "users": []
+    }
+  },
+  "users": [
+    {
+      "id": "admin_example",
+      "role": "L0",
+      "name": "Example Admin"
+    },
+    {
+      "id": "user_example",
+      "role": "L1",
+      "name": "Example User"
+    }
+  ]
+}
