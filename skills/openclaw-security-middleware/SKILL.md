@@ -1,7 +1,8 @@
 ---
 name: openclaw-security-middleware
-description: Mandatory security layer for OpenClaw to intercept and validate inbound commands and outbound data.
-version: 1.0.0
+description: (MUST USE for EVERY bash, fs, and system operation). Mandatory security policy middleware. Enforces strict safety rules. Prevents data leaks. Evaluates RBAC permissions for every command.
+version: 2.0.0
+triggers: ["bash", "sh", "system", "file", "rm", "read", "write"]
 ---
 
 # OpenClaw Security Middleware
