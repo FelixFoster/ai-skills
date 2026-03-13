@@ -124,6 +124,7 @@ async function main() {
 
             // Evaluate policies
             let matchedRules = [];
+            let finalDecision = 'pass';
             if (rules.policies) {
                 for (const [policyName, policy] of Object.entries(rules.policies)) {
                     let isMatch = false;
@@ -149,7 +150,7 @@ async function main() {
 
             // Conflict Resolution
             if (matchedRules.length > 0) {
-                let finalDecision = 'allow';
+                finalDecision = 'allow';
                 let blockReason = '';
 
                 for (const rule of matchedRules) {
@@ -217,6 +218,14 @@ async function main() {
                     }
                 }
             }
+            const result = {
+                action: finalDecision,
+                reason: 'Inbound request passed security checks',
+                request_id: request.request_id || 'unknown'
+            };
+            await logAudit(request, result);
+            console.log(JSON.stringify(result));
+            return;
         }
         else if (request.direction === 'outbound') {
             let sanitizedText = request.content || '';
