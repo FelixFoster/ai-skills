@@ -83,6 +83,102 @@ async function main() {
         const authList = JSON.parse(fs.readFileSync(AUTH_LIST_FILE, 'utf8'));
 
 
+        if (request.direction === 'inbound') {
+            // Determine role
+            let role = 'L2';
+            if (authList.users) {
+                const user = authList.users.find(u => u.id === request.sender_id);
+                if (user && user.role) {
+                    role = user.role;
+                }
+            }
+
+            // Check P0
+            if (rules.inbound_rules && rules.inbound_rules.P0) {
+                for (const rule of rules.inbound_rules.P0) {
+                    if (new RegExp(rule).test(request.content)) {
+                        console.log(JSON.stringify({
+                            action: 'block',
+                            reason: 'P0 Critical Risk Detected',
+                            request_id: request.request_id || 'unknown'
+                        }));
+                        return;
+                    }
+                }
+            }
+
+            // Check P1
+            if (rules.inbound_rules && rules.inbound_rules.P1) {
+                for (const rule of rules.inbound_rules.P1) {
+                    if (new RegExp(rule).test(request.content)) {
+                        if (role === 'L0') {
+                            if (!request.content.includes('CONFIRMED_P1')) {
+                                console.log(JSON.stringify({
+                                    action: 'block',
+                                    reason: 'P1 High Risk Detected. L0 confirmation required. Please append "CONFIRMED_P1" to your request to proceed.',
+                                    request_id: request.request_id || 'unknown'
+                                }));
+                                return;
+                            }
+                        } else {
+                            console.log(JSON.stringify({
+                                action: 'block',
+                                reason: 'P1 High Risk Detected. Permission denied.',
+                                request_id: request.request_id || 'unknown'
+                            }));
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Check P2
+            if (rules.inbound_rules && rules.inbound_rules.P2) {
+                for (const rule of rules.inbound_rules.P2) {
+                    if (new RegExp(rule).test(request.content)) {
+                        const lockPath = path.join(__dirname, '../logs/rate_limit.lock');
+                        const dataPath = path.join(__dirname, '../logs/rate_limit.json');
+                        
+                        const isBlocked = await withFileLock(lockPath, async () => {
+                            let data = {};
+                            try {
+                                if (fs.existsSync(dataPath)) {
+                                    data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+                                }
+                            } catch (e) {
+                                // Ignore read errors, start fresh
+                            }
+
+                            const now = Date.now();
+                            const oneMinuteAgo = now - 60000;
+                            
+                            // Clean up old timestamps
+                            let timestamps = data.timestamps || [];
+                            timestamps = timestamps.filter(ts => ts > oneMinuteAgo);
+                            
+                            if (timestamps.length >= 10) {
+                                return true; // Blocked
+                            }
+                            
+                            timestamps.push(now);
+                            data.timestamps = timestamps;
+                            
+                            fs.writeFileSync(dataPath, JSON.stringify(data), 'utf8');
+                            return false; // Not blocked
+                        });
+
+                        if (isBlocked) {
+                            console.log(JSON.stringify({
+                                action: 'block',
+                                reason: 'P2 Rate Limit Exceeded',
+                                request_id: request.request_id || 'unknown'
+                            }));
+                            return;
+                        }
+                    }
+                }
+            }
+        }
         console.log(JSON.stringify({
             action: 'pass',
             reason: 'Skeleton implementation - always pass',
