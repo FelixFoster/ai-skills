@@ -41,6 +41,30 @@ The rule engine is entirely driven by an external configuration file. Open `scri
 - **`inbound_rules.P2`**: Medium-risk operations (allowed but strictly rate-limited, currently defaults to 10 times/minute).
 - **`outbound_masking`**: Outbound desensitization regexes. Currently built-in with masking for IPv4, mainstream Token formats, and system absolute paths.
 
+### Appendix: Default Rules (rules.json) Explained
+
+#### 1. Inbound (Intercepting Inputs)
+* **P0 Fatal Risks** (Absolute block, regardless of role):
+  * `\b(ssh|scp|telnet|rdp)\b`: Prevents the LLM from being used as a jump server to initiate remote connections.
+  * `rm\s+-rf\s+(/|~|\$HOME)`: Prevents disastrous "delete everything" commands on the system root or user home directories. (Note: `rm` on **normal files/folders** is permitted by default for admins).
+  * `cat\s+~/.ssh/id_rsa`: Prevents reading system SSH private keys to stop credential theft.
+* **P1 High Risks** (L0 requires confirmation, L1/L2 blocked immediately):
+  * `chmod\s+\d{3,4}\s+\S+` / `chown...`: Prevents unauthorized changes to system permissions and ownership (e.g., `chmod 777`).
+  * `passwd\s+\S+`: Prevents modifying system passwords.
+  * `vim?\s+/etc/\S+`: Prevents using editors to modify core system configurations under `/etc/`.
+* **P2 Medium/Sensitive Risks** (Allowed, but triggers strict rate-limiting: 10/min):
+  * `cat\s+/etc/passwd`: Reading the system user list.
+  * `ls\s+-la?\s+/root`: Snooping in the root directory.
+  * `find\s+/\s+-name\s+".*"`: Global search for hidden files (extremely resource-intensive).
+
+#### 2. Outbound (Data Masking)
+This processes the final **chat text displayed to the user**.
+**It does NOT affect the actual input/output of tools executed by the AI in the background, only the text in the dialog box.**
+* **IP**: Replaces `192.168.1.1` with `***.***.*.***` to prevent exposing internal/external network architectures.
+* **Token**: Replaces strings like `sk-xxxxx` (OpenAI, etc.), `AKLTxxx`, `eyJxxx` (JWT) with `[已隐藏的敏感密钥/Token]` to prevent account leaks.
+* **Path**: Replaces absolute paths containing real usernames, such as `/Users/fupeng/` or `/root/`, with `/path/to/...`.
+  * *Note: This is solely for UI protection of the end-user. When the AI executes `bash` in the background, it still uses the real paths, and system operations are unaffected.*
+
 ### Step 3: Activate in Your Agent
 As long as your Large Language Model (Agent) can read the `SKILL.md` in this directory, it will automatically follow the contract. This file mandates that the model must invoke this security script via Heredoc before calling any tools (like command line or file writing).
 
