@@ -122,88 +122,53 @@ async function main() {
                 }
             }
 
-            // Check P0
-            if (rules.inbound_rules && rules.inbound_rules.P0) {
-                for (const rule of rules.inbound_rules.P0) {
-                    if (new RegExp(rule).test(request.content)) {
-                        const result = {
-                            action: 'block',
-                            reason: 'P0 Critical Risk Detected',
-                            request_id: request.request_id || 'unknown'
-                        };
-                        await logAudit(request, result);
-                        console.log(JSON.stringify(result));
-                        return;
+            // Evaluate policies
+            let matchedRules = [];
+            if (rules.policies) {
+                for (const [policyName, policy] of Object.entries(rules.policies)) {
+                    let isMatch = false;
+                    if (policy.patterns) {
+                        for (const pattern of policy.patterns) {
+                            if (new RegExp(pattern).test(request.content)) {
+                                isMatch = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isMatch) {
+                        let effectiveRule = { ...policy.default_rule };
+                        if (policy.role_overrides && policy.role_overrides[role]) {
+                            effectiveRule = { ...effectiveRule, ...policy.role_overrides[role] };
+                        }
+                        effectiveRule.policyName = policyName;
+                        matchedRules.push(effectiveRule);
                     }
                 }
             }
-            // Check P1
-            if (rules.inbound_rules && rules.inbound_rules.P1) {
-                for (const rule of rules.inbound_rules.P1) {
-                    if (new RegExp(rule).test(request.content)) {
-                        if (role === 'L0') {
-                            if (!request.content.includes('CONFIRMED_P1')) {
-                                const result = {
-                                    action: 'block',
-                                    reason: 'P1 High Risk Detected. L0 confirmation required. Please append "CONFIRMED_P1" to your request to proceed.',
-                                    request_id: request.request_id || 'unknown'
-                                };
-                                await logAudit(request, result);
-                                console.log(JSON.stringify(result));
-                                return;
-                            }
-                        } else {
-                            const result = {
-                                action: 'block',
-                                reason: 'P1 High Risk Detected. Permission denied.',
-                                request_id: request.request_id || 'unknown'
-                            };
-                            await logAudit(request, result);
-                            console.log(JSON.stringify(result));
-                            return;
-                        }
+
+            // Conflict Resolution
+            if (matchedRules.length > 0) {
+                let finalDecision = 'allow';
+                let blockReason = '';
+
+                for (const rule of matchedRules) {
+                    if (rule.action === 'block') {
+                        finalDecision = 'block';
+                        blockReason = `Blocked by policy: ${rule.policyName}`;
+                        break;
                     }
                 }
-            }
-            // Check P2
-            if (rules.inbound_rules && rules.inbound_rules.P2) {
-                for (const rule of rules.inbound_rules.P2) {
-                    if (new RegExp(rule).test(request.content)) {
-                        const lockPath = path.join(__dirname, '../logs/rate_limit.lock');
-                        const dataPath = path.join(__dirname, '../logs/rate_limit.json');
-                        const isBlocked = await withFileLock(lockPath, async () => {
-                            let data = {};
-                            try {
-                                if (fs.existsSync(dataPath)) {
-                                    data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-                                }
-                            } catch (e) {
-                                // Ignore read errors, start fresh
-                            }
-                            const now = Date.now();
-                            const oneMinuteAgo = now - 60000;
-                            // Clean up old timestamps
-                            let timestamps = data.timestamps || [];
-                            timestamps = timestamps.filter(ts => ts > oneMinuteAgo);
-                            if (timestamps.length >= 10) {
-                                return true; // Blocked
-                            }
-                            timestamps.push(now);
-                            data.timestamps = timestamps;
-                            fs.writeFileSync(dataPath, JSON.stringify(data), 'utf8');
-                            return false; // Not blocked
-                        });
-                        if (isBlocked) {
-                            const result = {
-                                action: 'block',
-                                reason: 'P2 Rate Limit Exceeded',
-                                request_id: request.request_id || 'unknown'
-                            };
-                            await logAudit(request, result);
-                            console.log(JSON.stringify(result));
-                            return;
-                        }
-                    }
+
+                if (finalDecision === 'block') {
+                    const result = {
+                        action: 'block',
+                        reason: blockReason,
+                        request_id: request.request_id || 'unknown'
+                    };
+                    await logAudit(request, result);
+                    console.log(JSON.stringify(result));
+                    return;
                 }
             }
         }
