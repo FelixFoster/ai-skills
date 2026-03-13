@@ -49,7 +49,7 @@ The rule engine is entirely driven by an external configuration file. Open `scri
   * `rm\s+-rf\s+(/|~|\$HOME)`: Prevents disastrous "delete everything" commands on the system root or user home directories.
   * `cat\s+~/.ssh/id_rsa`: Prevents reading system SSH private keys to stop credential theft.
 * **P1 High Risks** (L0 requires confirmation, L1/L2 blocked immediately):
-  * `rm\s+`: All delete operations (including normal files) are now classified as **P1 High Risk**. Standard users have no permission to delete anything, and L0 admins require a secondary confirmation.
+  * **P1.5 Developer Tier**: `rm\s+` (normal file deletion) has been moved to a dedicated `P1_5` tier. L1 (Developers) and L0 (Admins) can execute it directly, but unconfigured default users (L2) are blocked immediately to prevent "accidental deletion."
   * `chmod\s+\d{3,4}\s+\S+` / `chown...`: Prevents unauthorized changes to system permissions and ownership (e.g., `chmod 777`).
   * `passwd\s+\S+`: Prevents modifying system passwords.
   * `vim?\s+/etc/\S+`: Prevents using editors to modify core system configurations under `/etc/`.
