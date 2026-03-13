@@ -173,10 +173,10 @@ async function main() {
                 // Confirm and Rate Limit Logic
                 for (const rule of matchedRules) {
                     if (rule.require_confirm) {
-                        if (!request.content.includes('CONFIRMED_P1')) {
+                        if (!request.content.includes('CONFIRMED')) {
                             const result = {
                                 action: 'block',
-                                reason: 'High Risk Detected. Confirmation required. Please append "CONFIRMED_P1" to your request to proceed.',
+                                reason: 'High Risk Detected. Confirmation required. Please append "CONFIRMED" to your request to proceed.',
                                 request_id: request.request_id || 'unknown'
                             };
                             await logAudit(request, result);

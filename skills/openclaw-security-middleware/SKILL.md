@@ -32,13 +32,13 @@ EOF
 - `sender_id`: The unique identifier of the user or process initiating the request.
 - `content`: The actual payload to be inspected.
 
-## P1 Confirmation Flow
+## Confirmation Flow
 
-If the middleware detects a high-risk operation (P1), it will return a response indicating that user confirmation is required.
+If the middleware detects a high-risk operation that requires confirmation, it will return a response indicating that user confirmation is required.
 
 1. **Detection**: The middleware returns a block message.
 2. **User Interaction**: You must present the risk to the user and ask for explicit confirmation.
-3. **Re-submission**: If the user confirms, you must call the middleware again, appending `CONFIRMED_P1` to the `content` field.
+3. **Re-submission**: If the user confirms, you must call the middleware again, appending `CONFIRMED` to the `content` field.
 
 Example of confirmed re-submission:
 
@@ -47,7 +47,7 @@ node skills/openclaw-security-middleware/scripts/security_middleware.js << 'EOF'
 {
   "direction": "inbound",
   "sender_id": "user_id_here",
-  "content": "rm -rf /important/dir CONFIRMED_P1"
+  "content": "rm -rf /important/dir CONFIRMED"
 }
 EOF
 ```

@@ -34,29 +34,45 @@ Before using it, **you must configure the administrator list**, otherwise all hi
 }
 ```
 
-### Step 2: Customize Security Rules (Optional)
-The rule engine is entirely driven by an external configuration file. Open `scripts/rules.json` to customize your red lines:
-- **`inbound_rules.P0`**: Fatal risks (match = immediate block and alert). Suitable for `ssh`, `rm -rf`, viewing private keys, etc.
-- **`inbound_rules.P1`**: High-risk operations (L0 users can re-confirm, others are rejected). Suitable for modifying configs, viewing logs, etc.
-- **`inbound_rules.P2`**: Medium-risk operations (allowed but strictly rate-limited, currently defaults to 10 times/minute).
+### Step 2: Customize Security Policies (Optional)
+The security engine is driven by `scripts/rules.json` and uses a **Policy Matrix** architecture. You can define different policies based on your business needs and configure differentiated behaviors for different roles.
+
+#### Policy Structure Explained
+Each policy contains the following core fields:
+- **`patterns`**: An array of regular expressions used to match dangerous commands.
+- **`default_rule`**: The default rule, including `action` (`allow` or `block`), and optional `require_confirm` (whether confirmation is required) and `rate_limit` (number of allowed requests per minute).
+- **`role_overrides`**: Role-specific override configurations. Allows customizing behavior for specific roles (e.g., `L0` admins), overriding the `default_rule`.
 - **`outbound_masking`**: Outbound desensitization regexes. Currently built-in with masking for IPv4, mainstream Token formats, and system absolute paths.
 
-### Appendix: Default Rules (rules.json) Explained
+#### Example Configuration
+```json
+"modify_system_config": {
+  "patterns": ["passwd\\s+\\S+", "vim?\\s+/etc/\\S+"],
+  "default_rule": { "action": "block" },
+  "role_overrides": {
+    "L0": { "action": "allow", "require_confirm": true }
+  }
+}
+```
+*The example above indicates that modifying system configurations is blocked by default, but L0 admins can execute it (requires secondary confirmation).*
 
-#### 1. Inbound (Intercepting Inputs)
-* **P0 Fatal Risks** (Absolute block, regardless of role):
-  * `\b(ssh|scp|telnet|rdp)\b`: Prevents the LLM from being used as a jump server to initiate remote connections.
-  * `rm\s+-rf\s+(/|~|\$HOME)`: Prevents disastrous "delete everything" commands on the system root or user home directories.
-  * `cat\s+~/.ssh/id_rsa`: Prevents reading system SSH private keys to stop credential theft.
-* **P1 High Risks** (L0 requires confirmation, L1/L2 blocked immediately):
-  * **P1.5 Developer Tier**: `rm\s+` (normal file deletion) has been moved to a dedicated `P1_5` tier. L1 (Developers) and L0 (Admins) can execute it directly, but unconfigured default users (L2) are blocked immediately to prevent "accidental deletion."
-  * `chmod\s+\d{3,4}\s+\S+` / `chown...`: Prevents unauthorized changes to system permissions and ownership (e.g., `chmod 777`).
-  * `passwd\s+\S+`: Prevents modifying system passwords.
-  * `vim?\s+/etc/\S+`: Prevents using editors to modify core system configurations under `/etc/`.
-* **P2 Medium/Sensitive Risks** (Allowed, but triggers strict rate-limiting: 10/min):
-  * `cat\s+/etc/passwd`: Reading the system user list.
-  * `ls\s+-la?\s+/root`: Snooping in the root directory.
-  * `find\s+/\s+-name\s+".*"`: Global search for hidden files (extremely resource-intensive).
+### Appendix: Default Policies (rules.json) Explained
+
+#### 1. Inbound (Intercepting Inputs) Analysis
+* **`destroy_system_core` (Core Destruction)**:
+  * Matches `ssh`, `rm -rf /`, reading private keys, etc.
+  * **Default Behavior**: Absolute block (`block`). Prevents the LLM from being used as a jump server or performing catastrophic deletions.
+* **`modify_system_config` (Configuration Tampering)**:
+  * Matches `chmod`, `chown`, modifying passwords, editing `/etc/` files, etc.
+  * **Default Behavior**: Blocked.
+  * **Role Override**: `L0` admins are allowed to execute, but require secondary confirmation.
+* **`delete_standard_file` (Standard Deletion)**:
+  * Matches `rm `.
+  * **Default Behavior**: Blocked. Prevents standard users from accidentally deleting files.
+  * **Role Override**: `L1` developers are allowed to execute (requires confirmation), `L0` admins are allowed to execute (no confirmation required).
+* **`read_sensitive_data` (Sensitive Reading)**:
+  * Matches reading `/etc/passwd`, snooping in the root directory, global search for hidden files, etc.
+  * **Default Behavior**: Allowed, but triggers a rate limit of 10 times per minute.
 
 #### 2. Outbound (Data Masking)
 This processes the final **chat text displayed to the user**.
@@ -75,15 +91,15 @@ As long as your Large Language Model (Agent) can read the `SKILL.md` in this dir
 
 ### Scenario 1: Preventing Group Misoperation or Malicious Injection
 - **Group Member (Unregistered ID)**: *"Help me clear the server's cache directory /tmp"*
-- **Agent Internal Execution**: Calls `security_middleware.js` ➡️ Hits P1 rule ➡️ Discovers the SenderID is not L0 ➡️ Returns `block`.
+- **Agent Internal Execution**: Calls `security_middleware.js` ➡️ Hits `modify_system_config` policy ➡️ Discovers the SenderID is not L0 ➡️ Returns `block`.
 - **Agent Replies to Group**: *"Sorry, this operation is high-risk, and you do not have permission to execute it."*
 
-### Scenario 2: Administrator High-Risk Confirmation (P1)
+### Scenario 2: Administrator High-Risk Confirmation (Confirmation Flow)
 - **You (L0)**: *"Help me modify the nginx config"*
-- **Agent Internal Execution**: Hits P1 rule ➡️ Discovers you are L0 ➡️ Returns a request for confirmation.
+- **Agent Internal Execution**: Hits `modify_system_config` policy ➡️ Discovers you are L0 ➡️ Returns a request for confirmation.
 - **Agent Replies to You**: *"This is a high-risk operation that may affect the service. Please reply 'Confirm execution' to proceed."*
 - **You (L0)**: *"Confirm execution"*
-- **Agent Internal Execution**: Automatically appends the `CONFIRMED_P1` flag and calls the middleware again ➡️ Verification passes ➡️ Begins actual configuration modification.
+- **Agent Internal Execution**: Automatically appends the `CONFIRMED` flag and calls the middleware again ➡️ Verification passes ➡️ Begins actual configuration modification.
 
 ### Scenario 3: Preventing Sensitive Data Leakage (Outbound)
 - **You**: *"Help me look at the system's current environment variables"*
