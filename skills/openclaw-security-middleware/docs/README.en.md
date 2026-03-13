@@ -21,6 +21,9 @@ Before using it, **you must configure the administrator list**, otherwise all hi
 1. Open `config/auth_list.json`.
 2. Fill in your real User ID (e.g., your Feishu/WeChat/Slack UserID) into the `users` array.
 3. Set the role to `"L0"` (highest permission).
+  * **How to get your real ID?**
+    * If you are using a bot on platforms like WeChat, WeCom, or Feishu, this ID is usually the `user_id` provided by the platform's callback (e.g., `ou_xxx`, `wxid_xxx`).
+    * If you are testing on OpenClaw's web interface, you can ask the Agent: "What is my current sender_id?". The Agent will read it from its context and tell you.
 
 ```json
 {

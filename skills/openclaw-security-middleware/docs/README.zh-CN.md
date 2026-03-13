@@ -21,6 +21,9 @@
 1. 打开 `config/auth_list.json`。
 2. 将你的真实用户 ID（如飞书/微信/Slack 的 UserID）填入 `users` 数组中。
 3. 将角色设置为 `"L0"`（最高权限）。
+  * **怎么获取你的真实 ID？** 
+    * 如果你在使用微信/企微/飞书等平台的机器人，这个 ID 通常是平台回调的 `user_id`（如 `ou_xxx`, `wxid_xxx`）。
+    * 如果你在 OpenClaw 的网页端测试，可以询问 Agent：“我现在的 sender_id 是什么？”，Agent 会从它的上下文里读出来并告诉你。
 
 ```json
 {
