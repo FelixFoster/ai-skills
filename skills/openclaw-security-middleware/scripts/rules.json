@@ -1,23 +1,62 @@
 {
-  "inbound_rules": {
-    "P0": [
-      "\\b(ssh|scp|telnet|rdp)\\b",
-      "rm\\s+-rf\\s+(/|~|\\$HOME)",
-      "cat\\s+~/.ssh/id_rsa"
-    ],
-    "P1": [
-      "chmod\\s+\\d{3,4}\\s+\\S+",
-      "rm\\s+",
-      "chown\\s+\\S+\\s+\\S+",
-      "passwd\\s+\\S+",
-      "vim?\\s+/etc/\\S+",
-      "nano\\s+/etc/\\S+"
-    ],
-    "P2": [
-      "cat\\s+/etc/passwd",
-      "ls\\s+-la?\\s+/root",
-      "find\\s+/\\s+-name\\s+\".*\""
-    ]
+  "policies": {
+    "destroy_system_core": {
+      "patterns": [
+        "\\b(ssh|scp|telnet|rdp)\\b",
+        "rm\\s+-rf\\s+(/|~|\\$HOME)",
+        "cat\\s+~/.ssh/id_rsa"
+      ],
+      "default_rule": {
+        "action": "block"
+      }
+    },
+    "modify_system_config": {
+      "patterns": [
+        "chmod\\s+\\d{3,4}\\s+\\S+",
+        "chown\\s+\\S+\\s+\\S+",
+        "passwd\\s+\\S+",
+        "vim?\\s+/etc/\\S+",
+        "nano\\s+/etc/\\S+"
+      ],
+      "default_rule": {
+        "action": "block"
+      },
+      "role_overrides": {
+        "L0": {
+          "action": "allow",
+          "require_confirm": true
+        }
+      }
+    },
+    "delete_standard_file": {
+      "patterns": [
+        "rm\\s+"
+      ],
+      "default_rule": {
+        "action": "block"
+      },
+      "role_overrides": {
+        "L1": {
+          "action": "allow",
+          "require_confirm": true
+        },
+        "L0": {
+          "action": "allow",
+          "require_confirm": false
+        }
+      }
+    },
+    "read_sensitive_data": {
+      "patterns": [
+        "cat\\s+/etc/passwd",
+        "ls\\s+-la?\\s+/root",
+        "find\\s+/\\s+-name\\s+\".*\""
+      ],
+      "default_rule": {
+        "action": "allow",
+        "rate_limit": 10
+      }
+    }
   },
   "outbound_masking": {
     "IP": "((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)",
