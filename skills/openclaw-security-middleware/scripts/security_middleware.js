@@ -219,7 +219,7 @@ async function main() {
                     } else if (key === 'Token') {
                         replacement = '[已隐藏的敏感密钥/Token]';
                     } else if (key === 'Path') {
-                        replacement = '/path/to/...';
+                        replacement = '$1[user]$3';
                     }
                     sanitizedText = sanitizedText.replace(regex, replacement);
                 }
